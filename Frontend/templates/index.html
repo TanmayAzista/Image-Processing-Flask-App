@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Image Processing App</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="left" id="image-list">
+            <h3>Images</h3>
+            <button id="upload-btn">Upload Image</button>
+            <input type="file" id="file-input" style="display:none" accept="image/*">
+            <div id="image-list-container" class="image-list"></div>
+        </div>
+        <div class="center" id="image-viewer">
+            <div id="image-container">
+                <img id="main-image" draggable="false" />
+            </div>
+        </div>
+        <div class="right" id="edit-options">
+            <h3>Edit / Functions</h3>
+            <span>Options will appear here</span>
+        </div>
+    </div>
+    <script src="/static/imageViewer.js"></script>
+    <script src="/static/api.js"></script>
+</body>
+</html>
