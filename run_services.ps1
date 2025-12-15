@@ -57,6 +57,19 @@ function Stop-Services {
     Write-Host "Services stopped. Exiting runner script." -ForegroundColor Green
 }
 
+# --- Process Status Helper ---
+function Get-ServiceStatus {
+    param(
+        [int]$ProcessId
+    )
+
+    $proc = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+    if ($null -ne $proc -and -not $proc.HasExited) {
+        return $true
+    }
+    return $false
+}
+
 
 # --- Service Start Logic (Wrapped in Try/Finally) ---
 try {
@@ -98,13 +111,24 @@ try {
         }
     }
 
-    Write-Host "---"
-    Write-Host "Service Start Complete."
+    # Give services time to initialize
+    Start-Sleep -Seconds 3
 
-    # Display the PIDs
+    Write-Host "---"
+    Write-Host "Service Start Status:" -ForegroundColor Cyan
+
     foreach ($Service in $ServicePIDs) {
-        Write-Host "$($Service.Name) Process ID: $($Service.PID)"
+        $isRunning = Get-ServiceStatus -ProcessId $Service.PID
+
+        if ($isRunning) {
+            Write-Host "$($Service.Name) Process ID: $($Service.PID), RUNNING" -ForegroundColor Green
+        } else {
+            Write-Host "$($Service.Name) Process ID: $($Service.PID), STOPPED" -ForegroundColor Red
+        }
     }
+
+    Write-Host "---"
+
 
     Write-Host "Access UI at: http://127.0.0.1:5000"
     Write-Host "---"
