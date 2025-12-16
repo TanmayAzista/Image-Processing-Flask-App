@@ -1,4 +1,5 @@
 from Helpers.FileClass.file import ImageFile
+from Helpers import common_helpers
 from functools import lru_cache
 from io import BytesIO
 import pickle
@@ -40,7 +41,11 @@ def getPickle(_uuid: str) -> ImageFile:
     with open(pkl_file, 'rb') as pkl:
         return pickle.load(pkl)
         
-@lru_cache
-def getImage(_uuid: str) -> bytes:
+def imageSaveToStack(_uuid: str) -> str:
     img: ImageFile = getPickle(_uuid)
-    return img.image_full
+    
+    npy = img.npy
+    new_uuid = common_helpers.generate_uuid()
+    common_helpers.save_stack_npy(new_uuid, npy)
+    
+    return new_uuid
