@@ -50,6 +50,35 @@ registerUIAction('file-input', 'change', function() {
     });
 });
 
+registerUIAction('undo-btn', 'click', () => {
+    fetch('/stack/undo', { method: 'POST' })
+        .then(() => {
+            ImageViewer.reload();   // GET /image
+            return fetchStackState();
+        });
+});
+
+registerUIAction('redo-btn', 'click', () => {
+    fetch('/stack/redo', { method: 'POST' })
+        .then(() => {
+            ImageViewer.reload();   // GET /image
+            return fetchStackState();
+        });
+});
+
+function stackReset(){
+    fetch('/stack', { method: 'DELETE' })
+        .then(() => {
+            ImageViewer.reload();   // clears viewer
+            return fetchStackState();
+        });
+}
+
+registerUIAction('reset-btn', 'click', () => {
+    stackReset()
+});
+
+
 // Fetch and render image list with thumbnails
 function fetchAndRenderImageList() {
     fetch('/api/images')
@@ -77,16 +106,62 @@ function fetchAndRenderImageList() {
 
                 thumbDiv.appendChild(imgEl);
                 thumbDiv.appendChild(label);
-                thumbDiv.onclick = () => ImageViewer.loadImage(img.uuid)
+    
+                thumbDiv.onclick = () => selectImage(img.uuid);
+                // thumbDiv.onclick = () => ImageViewer.loadImage(img.uuid)
                 // TODO: Add click handler to select image
                 imageListContainer.appendChild(thumbDiv);
             });
         });
 }
 
+let stackState = null;
+function fetchStackState() {
+    return fetch('/stack/state')
+        .then(res => res.json())
+        .then(state => {
+            stackState = state;
+            updateUIState();
+            return state;
+        });
+}
+
+function updateUIState() {
+    const imageList = document.getElementById('image-list-container');
+    const undoBtn = document.getElementById('undo-btn');
+    const redoBtn = document.getElementById('redo-btn');
+    const resetBtn = document.getElementById('reset-btn');
+
+    if (!stackState) return;
+
+    // Lock image selection if dirty
+    imageList.style.pointerEvents = stackState.is_dirty ? 'none' : 'auto';
+    imageList.style.opacity = stackState.is_dirty ? '0.5' : '1';
+
+    undoBtn.disabled = !stackState.undo_possible;
+    redoBtn.disabled = !stackState.redo_possible;
+    resetBtn.disabled = !stackState.has_image;
+}
+
+function selectImage(uuid) {
+    fetch(`/image?_uuid=${encodeURIComponent(uuid)}`, {
+        method: 'PUT'
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Image select failed");
+        return ImageViewer.reload();
+    })
+    .then(() => fetchStackState())
+    .catch(err => alert(err.message));
+}
+
+
 // Bind all registered actions on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
     UIActionRegistry.bindAll();
     fetchAndRenderImageList();
     ImageViewer.init();     // Initialise Image Viewer
+    fetchStackState()
+    OpsUI.init();
+    ImageViewer.reload()
 });
