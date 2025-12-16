@@ -97,7 +97,7 @@ try {
     
     # The full command to pass to cmd.exe /c
     # We use double quotes for the python script path to handle spaces
-        $FullCommand = "title $Name & python -m $Path"
+        $FullCommand = "title $Name & python -m Services.$Path"
 
         Write-Host "Starting $Name service..."
         
