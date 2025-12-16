@@ -116,7 +116,7 @@ class ImageFile(File):
     
     @property
     def image_render(self):
-        return self.npy8[:, :, :3]
+        return self.npy8[:, :, :3] # type: ignore
     
     @property
     def thumbnail(self):
