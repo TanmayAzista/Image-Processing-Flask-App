@@ -80,7 +80,7 @@ def fileUpload():
     file = request.files['file']
     filename = str(file.filename)
     _, ext = os.path.splitext(filename)
-    file_uuid = frontHelpers.generate_uuid()
+    file_uuid = common_helpers.generate_uuid()
     
     try:
         # Copy file as uuid to Uploads Dir
