@@ -126,9 +126,9 @@ class ImageFile(File):
         
         return ImageFile.to_bytes(np.array(pil_img))
     
-    @property
-    def image_full(self):
-        return ImageFile.to_bytes(self.image_render, format="PNG")
+    # @property
+    # def image_full(self):
+    #     return ImageFile.to_bytes(self.image_render, format="PNG")
         
     @staticmethod
     def to_bytes(img: np.ndarray, format="JPEG") -> bytes:
