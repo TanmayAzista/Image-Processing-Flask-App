@@ -1,5 +1,26 @@
-from flask import request
 import uuid, base64, os
+
+
+# -------------------- Load Env Vars --------------------- #  
+import dotenv
+# dotenv.load_dotenv()
+
+_cwd = os.path.abspath(os.getcwd())
+UPLOADS_DIR:str = os.getenv("uploads_dir", r"Data\Uploads")
+UPLOADS_DIR = os.path.join(_cwd, UPLOADS_DIR)
+os.makedirs(UPLOADS_DIR, exist_ok=True) # Makes directory if not present.
+
+STACK_DIR:str = os.getenv("stack_dir", r"Data\Session\Stack")
+STACK_DIR = os.path.join(_cwd, STACK_DIR)
+os.makedirs(STACK_DIR, exist_ok=True) # Makes directory if not present.
+# -------------------------------------------------------- #
+
+from flask import request
+import numpy as np
+from PIL import Image as pilImage
+from io import BytesIO
+
+
 
 def get_requestArgs(*args, check_all:bool=True):
     values = []
@@ -46,3 +67,25 @@ def removeFiles(*files: str, dir=""):
         removeFile(file, dir)
 
 
+def image_bytes(img: np.ndarray):
+    pimg = pilImage.fromarray(img)
+
+    buf = BytesIO()
+    pimg.save(buf, format="PNG")
+    # buf.seek(0)
+
+    return buf.getvalue()
+
+def read_stack_npy(id) -> np.ndarray | None:
+    npy_file = os.path.join(STACK_DIR, id)
+
+    if not os.path.exists(npy_file):
+        return None
+
+    with open(npy_file, 'rb') as f:
+        return np.load(f)
+    
+def save_stack_npy(id, npy):
+    npy_file = os.path.join(STACK_DIR, id + '.npy')
+    with open(npy_file, 'wb') as f:
+        np.save(f, npy)
