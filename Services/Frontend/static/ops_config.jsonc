@@ -1,0 +1,61 @@
+{
+  "categories": {
+    "transform": {
+      "label": "Transform",
+      "operations": {
+        "rotate": {
+          "label": "Rotate",
+          "params": {
+            "angle": {
+              "type": "number",
+              "default": 0,
+              "min": -180,
+              "max": 180,
+              "step": 1
+            }
+          }
+        },
+        "resize": {
+          "label": "Resize",
+          "params": {
+            "scale": {
+              "type": "number",
+              "default": 1.0,
+              "min": 0.01,
+              "step": 0.01
+            }
+          }
+        }
+      }
+    },
+
+    "color": {
+      "label": "Color Correction",
+      "operations": {
+        "normalise": {
+          "label": "Normalise",
+          "params": {
+            "clip_percent": {
+              "type": "number",
+              "default": 2.0,
+              "min": 0,
+              "max": 1,
+              "step": 0.1
+            }
+          }
+        },
+        "gamma": {
+          "label": "Gamma Correction",
+          "params": {
+            "gamma": {
+              "type": "number",
+              "default": 1.0,
+              "min": 0.1,
+              "step": 0.1
+            }
+          }
+        }
+      }
+    }
+  }
+}
