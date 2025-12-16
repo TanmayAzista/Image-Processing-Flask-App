@@ -1,4 +1,4 @@
-from ImageOperations import colorCorrection
+from Services.ImageOperations import colorCorrection
 import rasterio
 import rasterio.profiles as rioProfiles
 import rasterio.windows as rioWindows
@@ -6,6 +6,8 @@ import rasterio.io as rioIO
 from affine import Affine
 import numpy as np
 from PIL import Image
+
+from Helpers import common_helpers
 
 
 def loadRaster(filePath: str) -> rioIO.DatasetReader:
@@ -70,3 +72,34 @@ def rasterToNP(img: rioIO.DatasetReader) -> np.ndarray:
     img_bands = np.stack(bands)
     img_bands = img_bands.transpose((1, 2, 0))
     return img_bands
+
+
+# =========================== Transformations ========================= #
+
+def transformNormalise(npy, clip_percent:str="2"):
+    """Transforms an image and returns the new ID in the stack"""    
+    transformed = colorCorrection.clip_normalise_bandwise(npy, float(clip_percent))
+    return transformed    
+ 
+ 
+def invalidTransform(*args, **kwargs):
+    raise NotImplementedError
+
+
+# Add all transformation defintion above this
+# Map transform string to its function definition
+transforms = {
+    "normalise": transformNormalise,
+}
+    
+def applyTransform(npy_id, op, params):
+    npy = common_helpers.read_stack_npy(npy_id)
+    if npy is None:
+        raise FileNotFoundError
+
+    transformed = transforms.get(op, invalidTransform)(npy, **params)
+    new_id = common_helpers.generate_uuid()
+    
+    # Save the new transformed to stack
+    common_helpers.save_stack_npy(new_id, transformed)
+    return new_id
