@@ -5,7 +5,7 @@ print("Load ENV:", load_dotenv())
 
 
 import os
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
 import Services.Frontend.helpers as frontHelpers
 import Helpers.common_helpers as common_helpers
 from werkzeug.exceptions import HTTPException
@@ -20,8 +20,6 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 frontendApp = Flask("Frontend App", template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
 
 # ------------------ Load ENV Variables ------------------ #
-
-
 PORT=int(os.getenv("frontend_port"))    # type: ignore
 DEBUG = bool(os.getenv("DEBUG", 0))
 
@@ -43,7 +41,6 @@ def handle_exception(e):
         "error": "Internal Server Error"
     }), 500
 
-
 @frontendApp.route('/')
 def index():
     return render_template('index.html')
@@ -63,13 +60,6 @@ def api_get_images():
 def getImageThumbnail():
     _uuid = common_helpers.get_requestArgs('_uuid')[0]
     return frontHelpers.getImageThumbnail(_uuid)
-
-
-@frontendApp.route('/image', methods=['GET'])
-def getImage():
-    _uuid = common_helpers.get_requestArgs('_uuid')[0]
-    return frontHelpers.getImage(_uuid)
-
 
 @frontendApp.route('/upload', methods=['PUT'])
 def fileUpload():
@@ -106,7 +96,51 @@ def fileUpload():
         "original_filename": filename,
     }), 201
 
+@frontendApp.route('/stack/state', methods=['GET'])
+def getStackState():
+    state = frontHelpers.getStackState()
+    print(state)
+    return jsonify(state)
 
+@frontendApp.route('/stack/undo', methods=['POST'])
+def undoStack():
+    content, status, headers = frontHelpers.undoStack()
+    return Response(content, status=status, headers=dict(headers))
+
+
+@frontendApp.route('/stack/redo', methods=['POST'])
+def redoStack():
+    content, status, headers = frontHelpers.redoStack()
+    return Response(content, status=status, headers=dict(headers))
+
+@frontendApp.route('/stack', methods=['DELETE'])
+def resetStack():
+    content, status, headers = frontHelpers.resetStack()
+    return Response(content, status=status, headers=dict(headers))
+
+@frontendApp.route('/image', methods=['PUT'])
+def setImage():
+    _uuid = common_helpers.get_requestArgs('_uuid')[0]
+    content, status, headers = frontHelpers.setImage(_uuid)
+    return Response(content, status=status, headers=dict(headers))
+
+@frontendApp.route('/image', methods=['GET'])
+def getImage():
+    return frontHelpers.getImage()
+
+@frontendApp.route("/transform", methods=["PUT"])
+def applyTransform():
+    """
+    Frontend proxy for image transformation.
+    """
+    body = request.get_json(silent=True) or {}
+    op = body.get("op", None)
+    if not op:
+        return jsonify({"error": "Missing transform operation"}), 400
+
+    params = body.get("params", {})
+
+    return frontHelpers.applyTransform(op, params)
 
 if __name__ == '__main__':
     frontendApp.run(port=PORT, debug=DEBUG)

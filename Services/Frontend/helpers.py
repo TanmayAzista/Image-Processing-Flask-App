@@ -99,19 +99,101 @@ def getImageThumbnail(_uuid: str):
         content_type=response.headers.get("Content-Type", "image/jpeg")
     )
     
-def getImage(_uuid: str):
+def getStackState():
     response = requests.get(
-        f'{BACKEND_URL}/image',
-        params={'_uuid': _uuid},
-        stream=True,
+        f'{BACKEND_URL}/stack/state',
         timeout=5
     )
     if response.status_code != 200:
-        return Response("Thumbnail fetch failed", status=404)
-    
-    logging.info("Thumbnail fetched for %s", _uuid)
+        return None
+
+    return response.json()
+
+def undoStack():
+    response = requests.post(
+        f'{BACKEND_URL}/stack/undo',
+        timeout=5
+    )
+
+    return (
+        response.content,
+        response.status_code,
+        response.headers.items()
+    )
+
+def redoStack():
+    response = requests.post(
+        f'{BACKEND_URL}/stack/redo',
+        timeout=5
+    )
+
+    return (
+        response.content,
+        response.status_code,
+        response.headers.items()
+    )
+
+def resetStack():
+    response = requests.delete(
+        f'{BACKEND_URL}/stack',
+        timeout=5
+    )
+
+    return (
+        response.content,
+        response.status_code,
+        response.headers.items()
+    )
+
+
+def setImage(_uuid):
+    response = requests.put(
+        f'{BACKEND_URL}/image',
+        params={'_uuid': _uuid},
+        timeout=10
+    )
+
+    return (
+        response.content,
+        response.status_code,
+        response.headers.items()
+    )
+
+def getImage():
+    response = requests.get(
+        f'{BACKEND_URL}/image',
+        stream=True,
+        timeout=10
+    )
+
     return Response(
         response.content,
-        status=200,
-        content_type=response.headers.get("Content-Type", "image/jpeg")
+        status=response.status_code,
+        content_type=response.headers.get("Content-Type", "image/png")
+    )
+    
+def applyTransform(op: str, params: dict):
+    """
+    Forwards a transform request to Backend.
+    Backend manages stack, state, and ImageOp routing.
+    """
+    try:
+        response = requests.put(
+            f"{BACKEND_URL}/transform",
+            json={"op": op, "params": params},
+            timeout=60
+        )
+    except requests.RequestException as e:
+        return Response(
+            f"Backend unavailable: {e}",
+            status=502
+        )
+
+    return Response(
+        response.content,
+        status=response.status_code,
+        content_type=response.headers.get(
+            "Content-Type",
+            "application/json"
+        )
     )
