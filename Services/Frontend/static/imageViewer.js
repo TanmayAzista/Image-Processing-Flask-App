@@ -38,6 +38,11 @@ const ImageViewer = (function () {
         imageElement.src = `/image?_uuid=${encodeURIComponent(uuid)}`;
     }
 
+    function reload() {
+        imageElement.onload = () => fitImageToView();
+        imageElement.src = `/image?ts=${Date.now()}`;
+    }
+
     function fitImageToView() {
         const viewWidth = viewerElement.clientWidth;
         const viewHeight = viewerElement.clientHeight;
@@ -72,7 +77,7 @@ const ImageViewer = (function () {
     }
 
     function handleZoom(event) {
-        if (!currentUUID) return;
+        // if (!currentUUID) return;
 
         event.preventDefault();
 
@@ -94,7 +99,7 @@ const ImageViewer = (function () {
     }
 
     function handleMouseDown(event) {
-        if (!currentUUID) return;
+        // if (!currentUUID) return;
 
         isDragging = true;
         lastMouseX = event.clientX;
@@ -120,6 +125,6 @@ const ImageViewer = (function () {
     // Public API
     return {
         init,
-        loadImage
+        reload
     };
 })();
