@@ -1,3 +1,4 @@
+# Requires -Version 7   # Problematic
 # --- Simple Multi-Service Flask Runner with -nw Toggle ---
 
 # Define the script parameters
@@ -18,8 +19,8 @@ $Services = @{
     "Image Operations"= "ImageOperations.app"
 }
 
-# Array to store the process IDs for cleanup (Defined globally so finally can access it)
-$ServicePIDs = @()
+# Array to store live state of the service. Stores Process ID, Name and Status
+$ServiceStates = @()
 
 # Refined Cleanup Code Runs on shell exit
 $script:CleanupCalled = $false
@@ -38,7 +39,7 @@ function Stop-Services {
     if ($script:CleanupCalled) { return }
     $script:CleanupCalled = $true
     
-    if ($ServicePIDs.Count -eq 0) {
+    if ($ServiceStates.Count -eq 0) {
         Write-Host "No services to stop." -ForegroundColor Gray
         return
     }
@@ -47,7 +48,7 @@ function Stop-Services {
     Write-Host "$Reason --Stopping services..." -ForegroundColor Red
 
     # Loop through the stored PIDs and kill the process tree for each
-    foreach ($Service in $ServicePIDs) {
+    foreach ($Service in $ServiceStates) {
         Write-Host "Killing Process Tree for $($Service.Name) (PID $($Service.PID))..."
         
         # Using 2>$null to suppress errors if the process is already gone
@@ -69,6 +70,35 @@ function Get-ServiceStatus {
     }
     return $false
 }
+
+# --- Draw Serice Status Dashboard.
+function Draw-ServiceDashboard {
+    param(
+        [array]$States
+    )
+
+    Clear-Host
+    Write-Host "Service Status Monitor"
+    Write-Host "-----------------------"
+    Write-Host ("{0,-20} {1,-10} {2,-10}" -f "Service", "PID", "Status")
+    Write-Host ("{0,-20} {1,-10} {2,-10}" -f "-------", "---", "------")
+
+
+    foreach ($svc in $States) {
+        $pidText = if ($null -ne $svc.PID) { $svc.PID } else { "-" }          # Use pidText instead of ?? if PWSH version < 7
+
+        Write-Host ("{0,-20} {1,-10} {2,-10}" -f `
+            $svc.Name,
+            $pidText,
+            $svc.Status
+        )
+    }
+
+    Write-Host ""
+    Write-Host "Press ENTER or Ctrl+C to stop all services"
+
+}
+
 
 
 # --- Service Start Logic (Wrapped in Try/Finally) ---
@@ -103,38 +133,35 @@ try {
         
     # Start the process, splatting the arguments
         $Process = Start-Process @StartArgs -ArgumentList "/c", $FullCommand
-
+        
         # Store the PID
-        $ServicePIDs += [PSCustomObject]@{
-            Name = $Name
-            PID  = $Process.Id
+        $ServiceStates += [PSCustomObject]@{
+            Name    = $Name
+            PID     = $Process.Id
+            Status  = "Starting"
         }
     }
 
-    # Give services time to initialize
-    Start-Sleep -Seconds 3
+    $startTime = Get-Date
+    $startupWindow = 5   # seconds
 
-    Write-Host "---"
-    Write-Host "Service Start Status:" -ForegroundColor Cyan
+    while ((Get-Date) - $startTime -lt [TimeSpan]::FromSeconds($startupWindow)) {
 
-    foreach ($Service in $ServicePIDs) {
-        $isRunning = Get-ServiceStatus -ProcessId $Service.PID
+        foreach ($svc in $ServiceStates) {
+            $proc = Get-Process -Id $svc.PID -ErrorAction SilentlyContinue
 
-        if ($isRunning) {
-            Write-Host "$($Service.Name) Process ID: $($Service.PID), RUNNING" -ForegroundColor Green
-        } else {
-            Write-Host "$($Service.Name) Process ID: $($Service.PID), STOPPED" -ForegroundColor Red
+            switch ($true) {
+                { $null -eq $proc -and $svc.Status -eq "Starting" } { $svc.Status = "Failed"; break }
+                { $null -eq $proc }                                 { $svc.Status = "Stopped"; break }
+                default                                             { $svc.Status = "Running" }
+            }
+
         }
+
+        Draw-ServiceDashboard -States $ServiceStates
+        Start-Sleep -Milliseconds 100
     }
 
-    Write-Host "---"
-
-
-    Write-Host "Access UI at: http://127.0.0.1:5000"
-    Write-Host "---"
-    Write-Host "NOTE: Press ENTER or Ctrl+C in this PowerShell window to stop all services."
-
-    # Wait for user input (The script will pause here)
     try {
         while ($true) {
             if ($Host.UI.RawUI.KeyAvailable) {
