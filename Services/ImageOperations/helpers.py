@@ -1,0 +1,105 @@
+from Services.ImageOperations import colorCorrection
+import rasterio
+import rasterio.profiles as rioProfiles
+import rasterio.windows as rioWindows
+import rasterio.io as rioIO
+from affine import Affine
+import numpy as np
+from PIL import Image
+
+from Helpers import common_helpers
+
+
+def loadRaster(filePath: str) -> rioIO.DatasetReader:
+    return rasterio.open(filePath)
+
+def saveNPY(img: np.ndarray, outFile: str) -> None:
+    try:
+        with open(outFile + ".npy", "wb") as f:
+            np.save(f, img)
+    except Exception as e:
+        print(f"Error saving {outFile}.npy", e)
+    
+def savePNG(img: np.ndarray, outFile: str) -> None:
+    # PNG Save
+    img = colorCorrection.clip_normalise_bandwise(img, clip_percent=2)
+    img = colorCorrection.map_range(img)
+    img_file = Image.fromarray(img[:, :, :3], 'RGB')
+    try:
+        img_file.save(outFile+".png")
+    except Exception as e:
+        print(f"Error saving {outFile}.png", e)
+    
+def saveTif(img: np.ndarray, y_start: int, x_start: int, src_profile:rioProfiles.Profile, src_transform: Affine, outFile:str) -> None:
+    # NumPy shape is (H, W, D). Rasterio profile uses (W, H, Count)
+    height, width, d_count = img.shape
+    
+    window = rioWindows.Window(
+        col_off=x_start,    # type: ignore -> Works perfectly. Warning ignored.
+        row_off=y_start,    # type: ignore
+        width=width,        # type: ignore
+        height=height       # type: ignore
+    )
+    
+    newTransform = rioWindows.transform(
+        window=window,
+        transform=src_transform
+    )
+    
+    profile = src_profile
+    
+    profile.update({
+        'height': height,
+        'width': width,
+        'count': d_count,
+        'transform': newTransform,
+        'driver': 'GTiff', 
+        'dtype': img.dtype
+    })
+    
+    try:
+        with rasterio.open(outFile + ".tif", 'w', **profile) as dst:
+            dst.write(img.transpose(2, 0, 1))
+    except Exception as e:
+        print(f"Error saving {outFile}.tif", e)
+
+def rasterToNP(img: rioIO.DatasetReader) -> np.ndarray:
+    """Converts a raster loaded from rasterio to an np.ndarray
+    
+    Shape transposed from (D, H, W) -> (H, W, D)
+    """
+    bands = [img.read(i+1) for i in range(img.count)]
+    img_bands = np.stack(bands)
+    img_bands = img_bands.transpose((1, 2, 0))
+    return img_bands
+
+
+# =========================== Transformations ========================= #
+
+def transformNormalise(npy, clip_percent:str="2"):
+    """Transforms an image and returns the new ID in the stack"""    
+    transformed = colorCorrection.clip_normalise_bandwise(npy, float(clip_percent))
+    return transformed    
+ 
+ 
+def invalidTransform(*args, **kwargs):
+    raise NotImplementedError
+
+
+# Add all transformation defintion above this
+# Map transform string to its function definition
+transforms = {
+    "normalise": transformNormalise,
+}
+    
+def applyTransform(npy_id, op, params):
+    npy = common_helpers.read_stack_npy(npy_id)
+    if npy is None:
+        raise FileNotFoundError
+
+    transformed = transforms.get(op, invalidTransform)(npy, **params)
+    new_id = common_helpers.generate_uuid()
+    
+    # Save the new transformed to stack
+    common_helpers.save_stack_npy(new_id, transformed)
+    return new_id

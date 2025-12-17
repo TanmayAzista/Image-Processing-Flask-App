@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Image Processing App</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+    <!-- Image Directory -->
+    <div class="container">
+        <div class="left" id="image-list">
+            <h3>Images</h3>
+            <button id="upload-btn">Upload Image</button>
+            <input type="file" id="file-input" style="display:none" accept="image/*">
+            <div id="image-list-container" class="image-list"></div>
+        </div>
+
+        <!-- Central Image Viewer -->
+        <div class="center" id="image-viewer">
+            <div id="image-container">
+                <img id="main-image" draggable="false" />
+            </div>
+        </div>
+
+        <!-- Transformation functions and buttons -->
+        <div class="right" id="edit-options">
+
+            <!-- Session Controls -->
+            <section class="panel">
+                <h3>Session</h3>
+                <div class="btn-row">
+                    <button id="undo-btn" class="edit-btn">Undo</button>
+                    <button id="redo-btn" class="edit-btn">Redo</button>
+                    <button id="reset-btn" class="edit-btn danger">Reset</button>
+                </div>
+            </section>
+
+            <!-- Image Operations -->
+            <section class="panel">
+                <h3>Image Operations</h3>
+
+                <div class="controls">
+                    <label>
+                        Category
+                        <select id="op-category"></select>
+                    </label>
+
+                    <label>
+                        Operation
+                        <select id="op-operation"></select>
+                    </label>
+
+                    <div id="op-params"></div>
+
+                    <button id="op-apply" class="edit-btn primary">
+                        Apply
+                    </button>
+                </div>
+            </section>
+
+        </div>
+
+    </div>
+    <script src="/static/imageViewer.js"></script>
+    <script src="/static/opsUI.js"></script>
+    <script src="/static/api.js"></script>
+</body>
+</html>
