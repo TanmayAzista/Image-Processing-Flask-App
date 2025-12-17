@@ -1,8 +1,8 @@
-from ImageOperations import helpers as imgOpHelpers
-from ImageOperations import colorCorrection as imgOpColorCorrection
-from Inference import model as inferenceModel
+from Services.ImageOperations import helpers as imgOpHelpers
+from Services.ImageOperations import colorCorrection as imgOpColorCorrection
+from Services.Inference import model as inferenceModel
 
-from ShapeOperations import shapeOpNew as shapeOp
+from Services.ShapeOperations import shapeOpNew as shapeOp
 from ultralytics.engine.results import Results as uResults
 from ultralytics import YOLO # type: ignore
 import numpy as np
