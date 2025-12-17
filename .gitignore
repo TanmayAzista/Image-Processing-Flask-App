@@ -1,5 +1,8 @@
 Data
 .venv
+.vscode
+
+test.py
 __pycache__
 
 Inference/models
