@@ -1,4 +1,4 @@
-# Requires -Version 7   # Problematic
+# Requires -Version 7   
 # --- Simple Multi-Service Flask Runner with -nw Toggle ---
 
 # Define the script parameters
@@ -73,31 +73,60 @@ function Get-ServiceStatus {
 
 # --- Draw Serice Status Dashboard.
 function Draw-ServiceDashboard {
-    param(
-        [array]$States
-    )
+    param([array]$States)
 
-    Clear-Host
+    $rawUI = $Host.UI.RawUI
+    $rawUI.CursorPosition = @{ X = 0; Y = 0 }
+
     Write-Host "Service Status Monitor"
     Write-Host "-----------------------"
     Write-Host ("{0,-20} {1,-10} {2,-10}" -f "Service", "PID", "Status")
     Write-Host ("{0,-20} {1,-10} {2,-10}" -f "-------", "---", "------")
 
-
     foreach ($svc in $States) {
-        $pidText = if ($null -ne $svc.PID) { $svc.PID } else { "-" }          # Use pidText instead of ?? if PWSH version < 7
+        $pidText = if ($null -ne $svc.PID) { $svc.PID } else { "-" }
 
-        Write-Host ("{0,-20} {1,-10} {2,-10}" -f `
-            $svc.Name,
-            $pidText,
-            $svc.Status
-        )
+        $color = switch ($svc.Status) {
+            "Starting" { "Yellow" }
+            "Running " { "Green" }
+            "Stopped " { "Red" }
+            "Failed  " { "Red" }
+            default    { "Gray" }
+        }
+
+        Write-Host ("{0,-20} {1,-10} " -f $svc.Name, $pidText) -NoNewline
+        Write-Host $svc.Status -ForegroundColor $color
     }
 
     Write-Host ""
     Write-Host "Press ENTER or Ctrl+C to stop all services"
-
 }
+
+function Update-ServiceStatus {
+    param($svc)
+
+    $oldStatus = $svc.Status
+
+    $cmdProc = Get-Process -Id $svc.PID -ErrorAction SilentlyContinue
+
+    if ($null -eq $cmdProc) {
+        $svc.Status = if ($svc.Status -eq "Starting") { "Failed  " } else { "Stopped " }
+    }
+    else {
+        $children = Get-CimInstance Win32_Process |
+            Where-Object { $_.ParentProcessId -eq $svc.PID -and $_.Name -like "python*" }
+
+        if ($children.Count -eq 0) {
+            $svc.Status = "Stopped "
+        }
+        else {
+            $svc.Status = "Running "
+        }
+    }
+
+    return ($oldStatus -ne $svc.Status)
+}
+
 
 
 
@@ -142,36 +171,39 @@ try {
         }
     }
 
-    $startTime = Get-Date
-    $startupWindow = 5   # seconds
+    
+    
+    Clear-Host
+    Draw-ServiceDashboard -States $ServiceStates
+    $needsRedraw = $false
+    $count = 0
 
-    while ((Get-Date) - $startTime -lt [TimeSpan]::FromSeconds($startupWindow)) {
+    try { 
+        while ($true) {
+            $count = $count + 1
+            
+            foreach ($svc in $ServiceStates) {
 
-        foreach ($svc in $ServiceStates) {
-            $proc = Get-Process -Id $svc.PID -ErrorAction SilentlyContinue
-
-            switch ($true) {
-                { $null -eq $proc -and $svc.Status -eq "Starting" } { $svc.Status = "Failed"; break }
-                { $null -eq $proc }                                 { $svc.Status = "Stopped"; break }
-                default                                             { $svc.Status = "Running" }
+                # Update UI only when there is change
+                if (Update-ServiceStatus $svc) {
+                    $needsRedraw = $true
+                }
             }
 
-        }
+            if ($needsRedraw) {
+                Draw-ServiceDashboard -States $ServiceStates
+                $needsRedraw = $false
+            }
+            Start-Sleep -Milliseconds 250
 
-        Draw-ServiceDashboard -States $ServiceStates
-        Start-Sleep -Milliseconds 100
-    }
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
 
-    try {
-        while ($true) {
-            if ($Host.UI.RawUI.KeyAvailable) {
-                $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-                if ($key.VirtualKeyCode -eq 13) {
+                if ($key.Key -eq [ConsoleKey]::Enter) {
                     Stop-Services -Reason "User Input (ENTER)"
                     break
                 }
             }
-            Start-Sleep -Milliseconds 100
         }
     }
     catch [System.Management.Automation.PipelineStoppedException] {
